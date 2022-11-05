@@ -3,32 +3,73 @@ package plataformaFilmes;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class PlataformaFilmesTest {
 
-    @Test
-    public void validarLogin(){
+    static String token;
+    static String tipo;
+
+    @BeforeAll
+    public static void validarLogin(){
         RestAssured.baseURI = "http://localhost:8080/";
 
-        String json = "{" +
+        //teste enviando diretamente o json em string
+        /* String json = "{" +
                 "\"email\": \"aluno@email.com\"," +
                 "\"senha\": \"123456\"" +
                 "}";
+        Response response = post(json, ContentType.JSON, "auth"); */
 
-        Response response = post(json, ContentType.JSON, "auth");
+        //teste enviando json atraves de map
+        Map<String, String> map = new HashMap<>();
+        map.put("email", "aluno@email.com");
+        map.put("senha", "123456");
+
+        Response response = post(map, ContentType.JSON, "auth");
 
         //String token = response.body().jsonPath().get("token"); - Podemos simplificar tirando o "body", pois o RestAssured sabe que va,os pegar a informação do response
-        String token = response.jsonPath().get("token");
+        //token = response.jsonPath().get("token");
         //System.out.println(token);
 
         assertEquals(200, response.statusCode());
-        assertEquals("Bearer", response.jsonPath().get("tipo"));
+
+        //guarda token
+         token = response.jsonPath().get("token");
+         tipo = response.jsonPath().get("tipo");
     }
 
-    public Response post(Object json, ContentType contentType, String endpoint) {
+    @Test
+    public void validarTipoBearer(){
+        assertEquals("Bearer", tipo);
+    }
+
+    @Test
+    public void validarConsultaCategorias(){
+        Map<String, String> header = new HashMap<>();
+        header.put("Authorization", tipo + " " + token);
+
+        Response response = getCategorias(header, "categorias");
+        assertEquals(200, response.statusCode());
+
+        System.out.println(response.jsonPath().get().toString());
+    }
+
+    private static Response getCategorias(Map<String, String> header, String endpoint) {
+        return RestAssured.given()
+                .relaxedHTTPSValidation()
+                .headers(header)
+                .when()
+                .get(endpoint)
+                .thenReturn();
+    }
+
+    public static Response post(Object json, ContentType contentType, String endpoint) {
 
         return RestAssured.given()
                 .relaxedHTTPSValidation()
